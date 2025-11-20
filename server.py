@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import logging
 import sys 
+from yt_api import YtSearchResult
 
 logging.basicConfig(stream=sys.stderr)
 logger = logging.getLogger(__name__)
@@ -30,6 +31,12 @@ def get_top_comments(context: Context[ServerSession, AppContext], video_id: str,
     """Fetch the top n comments for a video"""
     yt_client = context.request_context.lifespan_context.yt_client
     return yt_client.get_top_comments(video_id=video_id, max_results=max_results)
+
+@mcp.tool()
+def get_search_results(context: Context[ServerSession, AppContext], searchString: str) -> YtSearchResult:
+    """Returns search results for the search string"""
+    yt_client = context.request_context.lifespan_context.yt_client
+    return yt_client.youtube_search(query=searchString)
 
 if __name__=='__main__':
     mcp.run(transport='streamable-http')

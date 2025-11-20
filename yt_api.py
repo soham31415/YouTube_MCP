@@ -3,6 +3,7 @@ from googleapiclient.discovery import build
 import os
 from dotenv import load_dotenv
 import pydantic
+from typing import List, Optional
 
 load_dotenv(override=True)
 
@@ -14,6 +15,21 @@ class YtComments(pydantic.BaseModel):
     commentor_channel: str # "" authorChannelUrl
     likes: int # "" likeCount
     replies: int # "" totalReplyCount
+    
+class YtSearchResultVideo(pydantic.BaseModel):
+    video_id: str
+    title: str
+    channel_name: str
+    video_url: str
+    thumbnail_url: str
+    description: str
+    published_at: str
+    
+class YtSearchResult(pydantic.BaseModel):
+    total_results: int
+    results_per_page: int
+    next_page_token: Optional[str] = None 
+    videos: List[YtSearchResultVideo]
 
 class YoutubeAPI:
     def __init__(self):
@@ -34,18 +50,33 @@ class YoutubeAPI:
                 maxResults=5
             ).execute()
             
-            print(f"--- Search results for: '{query}' ---")
+            video_objects_list = []
+            
             for item in search_response.get("items", []):
-                if item["id"]["kind"] == "youtube#video":
-                    title = item["snippet"]["title"]
-                    video_id = item["id"]["videoId"]
-                    print(f"Video: {title} (ID: {video_id})")
+                if item.get("id", {}).get("kind") == "youtube#video":
+                    
+                    snippet = item.get("snippet", {})
+                    vid_id = item.get("id", {}).get("videoId")
+
+                    video_obj = YtSearchResultVideo(
+                        video_id=vid_id,
+                        title=snippet.get("title", ""),
+                        channel_name=snippet.get("channelTitle", ""),
+                        video_url=f"https://www.youtube.com/watch?v={vid_id}",
+                        thumbnail_url=snippet.get("thumbnails", {}).get("high", {}).get("url", ""),
+                        description=snippet.get("description", ""),
+                        published_at=snippet.get("publishedAt", "")
+                    )
+                    video_objects_list.append(video_obj)
             
-            print("------------------------------------------")
+            search_result = YtSearchResult(
+                total_results=search_response.get("pageInfo", {}).get("totalResults", 0),
+                results_per_page=search_response.get("pageInfo", {}).get("resultsPerPage", 0),
+                next_page_token=search_response.get("nextPageToken", ""),
+                videos=video_objects_list
+            )
             
-            print(json.dumps(search_response))
-            
-            return search_response
+            return search_result
         
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -91,6 +122,6 @@ class YoutubeAPI:
             print(f'Oops: {e}')
 
 yt = YoutubeAPI()    
-# yt.youtube_search("A game faln song")
-yt.get_top_comments('VMQ4c3XK6CI', max_results=5)
+# print(yt.youtube_search("Ken broken cycle"))
+# yt.get_top_comments('VMQ4c3XK6CI', max_results=5)
 
