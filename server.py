@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import logging
 import sys 
-from yt_api import YtSearchResult
+from yt_api import YtSearchResult, YtVideo
 
 logging.basicConfig(stream=sys.stderr)
 logger = logging.getLogger(__name__)
@@ -37,6 +37,12 @@ def get_search_results(context: Context[ServerSession, AppContext], searchString
     """Returns search results for the search string"""
     yt_client = context.request_context.lifespan_context.yt_client
     return yt_client.youtube_search(query=searchString)
+
+@mcp.tool()
+def get_video_by_id(context: Context[ServerSession, AppContext], video_id: str) -> YtVideo:
+    """Returns details of the video whose video id is provided"""
+    yt_client = context.request_context.lifespan_context.yt_client
+    return yt_client.get_video_from_id(video_id=video_id)
 
 if __name__=='__main__':
     mcp.run(transport='streamable-http')

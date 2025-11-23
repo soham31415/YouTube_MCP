@@ -16,7 +16,7 @@ class YtComments(pydantic.BaseModel):
     likes: int # "" likeCount
     replies: int # "" totalReplyCount
     
-class YtSearchResultVideo(pydantic.BaseModel):
+class YtVideo(pydantic.BaseModel):
     video_id: str
     title: str
     channel_name: str
@@ -29,7 +29,7 @@ class YtSearchResult(pydantic.BaseModel):
     total_results: int
     results_per_page: int
     next_page_token: Optional[str] = None 
-    videos: List[YtSearchResultVideo]
+    videos: List[YtVideo]
 
 class YoutubeAPI:
     def __init__(self):
@@ -58,7 +58,7 @@ class YoutubeAPI:
                     snippet = item.get("snippet", {})
                     vid_id = item.get("id", {}).get("videoId")
 
-                    video_obj = YtSearchResultVideo(
+                    video_obj = YtVideo(
                         video_id=vid_id,
                         title=snippet.get("title", ""),
                         channel_name=snippet.get("channelTitle", ""),
@@ -120,8 +120,51 @@ class YoutubeAPI:
             return result
         except Exception as e:
             print(f'Oops: {e}')
+            
+    def get_video_from_id(self, video_id: str):
+        parts = [
+            "contentDetails",
+            "id",
+            "liveStreamingDetails",
+            "localizations",
+            "paidProductPlacementDetails",
+            "player",
+            "recordingDetails",
+            "snippet",
+            "statistics",
+            "status",
+            "topicDetails",
+        ]
+        res = self.yt.videos().list(
+            part=",".join(parts),
+            id=video_id
+        ).execute()
+        
+        import json
+        # print(json.dumps(res, indent=2))
+        
+        try:
+            item = res.get("items")[0]
+            snippet = item.get("snippet", {})
+            vid_id = item.get("id", "")
+            video = YtVideo(
+                video_id=vid_id,
+                title=snippet.get("title", ""),
+                channel_name=snippet.get("channelTitle", ""),
+                video_url=f"https://www.youtube.com/watch?v={vid_id}",
+                thumbnail_url=snippet.get("thumbnails", {}).get("high", {}).get("url", ""),
+                description=snippet.get("description", ""),
+                published_at=snippet.get("publishedAt", "")
+            )
+            print(f"Here is the video object: {video}")
+        except Exception as e:
+            print(f"Something went wrong, the items array is empty: {e}")
+            
+        return video
+        
 
 yt = YoutubeAPI()    
 # print(yt.youtube_search("Ken broken cycle"))
 # yt.get_top_comments('VMQ4c3XK6CI', max_results=5)
+# yt.get_video_from_id("VMQ4c3XK6CI")
 
